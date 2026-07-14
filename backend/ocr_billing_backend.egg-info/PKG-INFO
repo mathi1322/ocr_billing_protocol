@@ -1,0 +1,24 @@
+Metadata-Version: 2.4
+Name: ocr-billing-backend
+Version: 0.1.0
+Summary: OCR billing extraction API — OpenAI primary, Claude fallback
+Requires-Python: >=3.12
+Requires-Dist: fastapi>=0.115
+Requires-Dist: uvicorn[standard]>=0.30
+Requires-Dist: pydantic>=2.8
+Requires-Dist: pydantic-settings>=2.4
+Requires-Dist: python-multipart>=0.0.9
+Requires-Dist: supabase>=2.6
+Requires-Dist: openai>=1.40
+Requires-Dist: anthropic>=0.40
+Requires-Dist: redis>=5.0
+Requires-Dist: rq>=1.16
+Requires-Dist: pillow>=10.4
+Requires-Dist: pillow-heif>=0.16
+Requires-Dist: pypdf>=4.3
+Requires-Dist: pdf2image>=1.17
+Requires-Dist: httpx>=0.27
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23; extra == "dev"
+Requires-Dist: ruff>=0.5; extra == "dev"
