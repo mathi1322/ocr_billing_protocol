@@ -8,16 +8,27 @@ export function UploadZone({ onUploaded }: { onUploaded: () => void }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const onDrop = useCallback(
     async (files: File[]) => {
       setError(null);
+      setNotice(null);
       setBusy(true);
       try {
+        let duplicates = 0;
         for (let i = 0; i < files.length; i++) {
           setProgress(files.length > 1 ? `Extracting ${i + 1}/${files.length}…` : "Extracting…");
-          await uploadInvoice(files[i]);
+          const result = await uploadInvoice(files[i]);
+          if (result.duplicate) duplicates++;
           onUploaded();
+        }
+        if (duplicates > 0) {
+          setNotice(
+            duplicates === 1
+              ? "That document was already uploaded — showing the existing extraction (no AI cost)."
+              : `${duplicates} documents were already uploaded — existing extractions reused.`
+          );
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Upload failed");
@@ -77,6 +88,11 @@ export function UploadZone({ onUploaded }: { onUploaded: () => void }) {
       {error && (
         <p className="mt-3 rounded-lg bg-rose-50 px-4 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-400">
           {error}
+        </p>
+      )}
+      {notice && (
+        <p className="mt-3 rounded-lg bg-sky-50 px-4 py-2 text-sm text-sky-700 dark:bg-sky-500/10 dark:text-sky-400">
+          {notice}
         </p>
       )}
     </div>

@@ -73,7 +73,3 @@ class ValidationResult(BaseModel):
     score: float
     errors: list[str]
     flagged_fields: list[str]
-
-    @property
-    def passed(self) -> bool:
-        return not self.errors

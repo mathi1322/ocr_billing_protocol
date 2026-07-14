@@ -5,16 +5,15 @@ primary extractor and Claude as the fallback, with a deterministic validation
 layer deciding when to fall back. See [PLAN.md](PLAN.md) for the full design.
 
 ## Stack
-- **Frontend**: Next.js 15 + Tailwind (responsive PWA) — `frontend/`
-- **Backend**: FastAPI + Redis/RQ — `backend/`
+- **Frontend**: Next.js 15 + Tailwind, responsive web + mobile — `frontend/`
+- **Backend**: FastAPI — `backend/`
 - **Data**: Supabase (Postgres + Auth + Storage)
 
 ## Setup
 
 1. Copy `.env.example` → `.env` and fill in keys (Supabase, OpenAI, Anthropic).
-2. Apply the DB schema: open Supabase Dashboard → SQL Editor and run
-   `supabase/migrations/0001_init.sql` (creates tables, RLS policies, and the
-   private `bills` storage bucket).
+2. Apply the DB schema: open Supabase Dashboard → SQL Editor and run each file
+   in `supabase/migrations/` in order (tables, RLS policies, storage bucket).
 3. System packages needed by the pipeline: `poppler-utils` (PDF→image) and
    `libreoffice` (Word→PDF).
 
@@ -28,9 +27,6 @@ uv venv .venv && uv pip install -e .
 cd frontend
 npm install
 npm run dev          # http://localhost:3000
-
-# Redis (for the job queue, Phase 2+)
-docker compose up -d redis
 ```
 
 ## Smoke test the extraction pipeline

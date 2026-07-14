@@ -65,7 +65,7 @@ def _word_to_pdf(data: bytes, suffix: str) -> bytes:
             capture_output=True,
             timeout=120,
         )
-        return (Path(tmp) / f"input.pdf").read_bytes()
+        return (Path(tmp) / "input.pdf").read_bytes()
 
 
 def normalize(data: bytes, mime_type: str, max_pages: int = 20) -> NormalizedDoc:

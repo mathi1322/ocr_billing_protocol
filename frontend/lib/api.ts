@@ -53,6 +53,7 @@ export interface Invoice {
   winning_provider: string | null;
   extraction_json: Record<string, unknown> | null;
   created_at?: string;
+  duplicate?: boolean;
 }
 
 export interface InvoiceDetail extends Invoice {

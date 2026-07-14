@@ -4,7 +4,9 @@ Upload runs the pipeline inline for now; Phase 2 moves it onto the RQ worker
 with an SSE progress stream.
 """
 
+import hashlib
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 
@@ -25,13 +27,47 @@ async def upload_invoice(file: UploadFile, user_id: str = Depends(get_current_us
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, "File exceeds the 25 MB limit")
 
+    supabase = get_supabase_admin()
+
+    # Gate 1 — dedup: same bytes already extracted for this user? Return it,
+    # spend nothing.
+    content_hash = hashlib.sha256(data).hexdigest()
+    existing = (
+        supabase.table("invoices")
+        .select("*")
+        .eq("user_id", user_id)
+        .eq("content_hash", content_hash)
+        .limit(1)
+        .execute()
+    )
+    if existing.data:
+        return {**existing.data[0], "duplicate": True}
+
+    # Gate 2 — daily extraction cap: protects the AI budget from retry loops
+    # and runaway accounts.
+    today_start = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    used_today = (
+        supabase.table("invoices")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .gte("created_at", today_start.isoformat())
+        .execute()
+    ).count or 0
+    if used_today >= settings.extraction_daily_limit:
+        raise HTTPException(
+            429,
+            f"Daily extraction limit reached ({settings.extraction_daily_limit}/day). "
+            "Try again tomorrow or raise EXTRACTION_DAILY_LIMIT.",
+        )
+
     try:
         doc = normalize(data, file.content_type or "", settings.extraction_max_pages)
     except UnsupportedFormatError as exc:
         raise HTTPException(415, str(exc)) from exc
 
     invoice_id = str(uuid.uuid4())
-    supabase = get_supabase_admin()
 
     # Keep the original for the review UI
     storage_key = f"{invoice_id}/{file.filename}"
@@ -44,6 +80,7 @@ async def upload_invoice(file: UploadFile, user_id: str = Depends(get_current_us
     record = {
         "id": invoice_id,
         "user_id": user_id,
+        "content_hash": content_hash,
         "status": result.status,
         "source_file_key": storage_key,
         "source_filename": file.filename,
