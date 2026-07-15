@@ -81,10 +81,12 @@ def validate_extraction(bill: ExtractedBill) -> ValidationResult:
                 f"got {bill.total_amount:.2f}"
             )
 
-    # Soft signals
+    # Soft signals. Only flag absences that actually weaken trust in the
+    # numbers — missing due_date / vendor_address is normal on receipts and
+    # would just train users to ignore the banner.
     if bill.confidence_notes:
         flagged.append("confidence_notes")
-    for field in ("subtotal", "tax_amount", "due_date", "vendor_address", "bill_to_name"):
+    for field in ("subtotal", "tax_amount", "bill_to_name"):
         if getattr(bill, field) is None:
             flagged.append(field)
 

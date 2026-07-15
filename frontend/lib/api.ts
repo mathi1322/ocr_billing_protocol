@@ -53,7 +53,26 @@ export interface Invoice {
   winning_provider: string | null;
   extraction_json: Record<string, unknown> | null;
   created_at?: string;
-  duplicate?: boolean;
+}
+
+export class DuplicateInvoiceError extends Error {
+  existing_id: string;
+  vendor_name: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null;
+
+  constructor(detail: {
+    existing_id: string;
+    vendor_name: string | null;
+    invoice_number: string | null;
+    invoice_date: string | null;
+  }) {
+    super("This file has already been uploaded");
+    this.existing_id = detail.existing_id;
+    this.vendor_name = detail.vendor_name;
+    this.invoice_number = detail.invoice_number;
+    this.invoice_date = detail.invoice_date;
+  }
 }
 
 export interface InvoiceDetail extends Invoice {
@@ -65,41 +84,77 @@ export interface InvoiceDetail extends Invoice {
 export function formatMoney(amount: number | null | undefined, currency: string | null): string {
   if (amount == null) return "—";
   const symbol = currency === "INR" ? "₹" : currency === "USD" ? "$" : currency === "EUR" ? "€" : "";
-  const formatted = amount.toLocaleString(undefined, {
+  // Indian digit grouping (1,00,000) for INR; standard grouping otherwise
+  const formatted = amount.toLocaleString(currency === "INR" ? "en-IN" : "en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
   return symbol ? `${symbol}${formatted}` : `${formatted} ${currency ?? ""}`;
 }
 
-export async function uploadInvoice(file: File): Promise<Invoice> {
+export async function uploadInvoice(file: File, force = false): Promise<Invoice> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${API_URL}/api/invoices`, {
+  const res = await fetch(`${API_URL}/api/invoices${force ? "?force=true" : ""}`, {
     method: "POST",
     body: form,
     headers: await authHeaders(),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.detail ?? `Upload failed (${res.status})`);
+    if (res.status === 409 && body?.detail?.code === "duplicate_file") {
+      throw new DuplicateInvoiceError(body.detail);
+    }
+    const detail = body?.detail;
+    throw new Error(
+      typeof detail === "string" ? detail : `Upload failed (${res.status})`
+    );
   }
   return res.json();
 }
 
-export async function listInvoices(opts?: {
+export interface InvoiceFilters {
   status?: string;
   q?: string;
-}): Promise<Invoice[]> {
+  date_from?: string;
+  date_to?: string;
+}
+
+function filterParams(opts?: InvoiceFilters): URLSearchParams {
   const params = new URLSearchParams();
   if (opts?.status) params.set("status", opts.status);
   if (opts?.q) params.set("q", opts.q);
-  const qs = params.toString();
+  if (opts?.date_from) params.set("date_from", opts.date_from);
+  if (opts?.date_to) params.set("date_to", opts.date_to);
+  return params;
+}
+
+export async function listInvoices(opts?: InvoiceFilters): Promise<Invoice[]> {
+  const qs = filterParams(opts).toString();
   const res = await fetch(`${API_URL}/api/invoices${qs ? `?${qs}` : ""}`, {
     headers: await authHeaders(),
   });
   if (!res.ok) throw new Error(`Failed to load invoices (${res.status})`);
   return res.json();
+}
+
+export async function downloadExport(
+  format: "csv" | "xlsx",
+  opts?: InvoiceFilters
+): Promise<void> {
+  const params = filterParams(opts);
+  params.set("format", format);
+  const res = await fetch(`${API_URL}/api/invoices/export?${params}`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(`Export failed (${res.status})`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `invoices-${new Date().toISOString().slice(0, 10)}.${format}`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function getInvoice(id: string): Promise<InvoiceDetail> {
