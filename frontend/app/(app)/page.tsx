@@ -281,7 +281,7 @@ export default function Dashboard() {
       {/* Upload modal */}
       {uploadOpen && (
         <div
-          className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-4 backdrop-blur-sm sm:items-center"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
           onClick={(e) => {
             if (e.target === e.currentTarget) setUploadOpen(false);
           }}
