@@ -299,7 +299,7 @@ export default function Dashboard() {
                 </svg>
               </button>
             </div>
-            <UploadZone onUploaded={refresh} />
+            <UploadZone onUploaded={refresh} onComplete={() => setUploadOpen(false)} />
           </div>
         </div>
       )}

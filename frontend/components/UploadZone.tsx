@@ -11,7 +11,13 @@ interface DuplicatePrompt {
   resolve: (proceed: boolean) => void;
 }
 
-export function UploadZone({ onUploaded }: { onUploaded: () => void }) {
+export function UploadZone({
+  onUploaded,
+  onComplete,
+}: {
+  onUploaded: () => void;
+  onComplete?: () => void;
+}) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
@@ -65,6 +71,7 @@ export function UploadZone({ onUploaded }: { onUploaded: () => void }) {
         }
         if (done > 0) {
           toast("success", done === 1 ? "Bill extracted" : `${done} bills extracted`);
+          onComplete?.(); // e.g. close the surrounding modal — the toast is the feedback
         }
         if (skipped > 0) {
           toast("info", skipped === 1 ? "Duplicate skipped — nothing spent" : `${skipped} duplicates skipped`);
@@ -76,7 +83,7 @@ export function UploadZone({ onUploaded }: { onUploaded: () => void }) {
         setProgress(null);
       }
     },
-    [onUploaded, askDuplicate, toast]
+    [onUploaded, onComplete, askDuplicate, toast]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
